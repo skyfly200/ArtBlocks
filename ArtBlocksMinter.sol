@@ -218,6 +218,7 @@ contract GenArt721Minter {
   mapping(uint256 => bool) public projectMintingDisabled;
   mapping(address => mapping (uint256 => uint256)) public projectMintCounter;
   mapping(uint256 => uint256) public projectMintLimit;
+  mapping(uint256 => uint256[3]) public projectMintAllocations;
 
   constructor(address _genArt721Address) public {
     artblocksContract=GenArt721CoreContract(_genArt721Address);
@@ -236,6 +237,11 @@ contract GenArt721Minter {
   function setProjectMintLimit(uint256 _projectId,uint8 _limit) public {
     require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
     projectMintLimit[_projectId] = _limit;
+  }
+
+  function setProjectAllocations(uint256 _projectId, uint256[3] _allocations) public {
+    require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+    projectMintAllocations[_projectId] = _allocations;
   }
 
   function toggleContractFilter(uint256 _projectId) public {
