@@ -1,4 +1,4 @@
-
+// SPDX-License-Identifier: MIT
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/utils/EnumerableSet.sol";
 
@@ -468,7 +468,7 @@ contract GenArt721Minter {
   mapping(uint256 => uint256) public projectMintLimit;
   mapping(uint256 => uint256[3]) public projectMintAllocations;
 
-  constructor(address _genArt721Address) public {
+  constructor(address _genArt721Address) {
     artblocksContract=GenArt721CoreContract(_genArt721Address);
   }
 
@@ -526,12 +526,12 @@ contract GenArt721Minter {
       bids[bidId] = msg.value; // TODO - Also store the address that made the bid
       // is the bid at or over the project price
       if (msg.value == price) { // lottery
-        drawingEntries[_projectId][tx.origin] = bidId;
+        drawingEntries[_projectId][tx.origin] = true;
       } else { // Auction
-        auctionEntries[_projectId][tx.sender] = bidId;
+        auctionEntries[_projectId][tx.origin] = bidId;
       }
       // Update users balance
-      balances[tx.sender] += msg.value;
+      balances[tx.origin] += msg.value;
   }
   
   // Increase a bid (auction only)
@@ -586,7 +586,7 @@ contract GenArt721Minter {
   }
 
   function purchaseTo(address _to, uint256 _projectId) public payable returns(uint256 _tokenId){
-    require(!projectMintingDisabled, "project minting disabled");
+    require(!projectMintingDisabled[_projectId], "project minting disabled");
     if (keccak256(abi.encodePacked(artblocksContract.projectIdToCurrencySymbol(_projectId))) != keccak256(abi.encodePacked("ETH"))){
       require(msg.value==0, "this project accepts a different currency and cannot accept ETH");
       require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).allowance(msg.sender, address(this)) >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Insufficient Funds Approved for TX");
