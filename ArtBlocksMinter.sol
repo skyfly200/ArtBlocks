@@ -579,6 +579,43 @@ library Random {
 }
 
 
+/**
+ * @title Counters
+ * @author Matt Condon (@shrugs)
+ * @dev Provides counters that can only be incremented or decremented by one. This can be used e.g. to track the number
+ * of elements in a mapping, issuing ERC721 ids, or counting request ids.
+ *
+ * Include with `using Counters for Counters.Counter;`
+ * Since it is not possible to overflow a 256 bit integer with increments of one, `increment` can skip the {SafeMath}
+ * overflow check, thereby saving gas. This does assume however correct usage, in that the underlying `_value` is never
+ * directly accessed.
+ */
+library Counters {
+    using SafeMath for uint256;
+
+    struct Counter {
+        // This variable should never be directly accessed by users of the library: interactions must be restricted to
+        // the library's function. As of Solidity v0.5.2, this cannot be enforced, though there is a proposal to add
+        // this feature: see https://github.com/ethereum/solidity/issues/4637
+        uint256 _value; // default: 0
+    }
+
+    function current(Counter storage counter) internal view returns (uint256) {
+        return counter._value;
+    }
+
+    function increment(Counter storage counter) internal {
+        // The {SafeMath} overflow check can be skipped here, see the comment at the top
+        counter._value += 1;
+    }
+
+    function decrement(Counter storage counter) internal {
+        counter._value = counter._value.sub(1);
+    }
+}
+
+
+
 // ArtBlocksCore
 
 interface GenArt721CoreContract {
@@ -620,6 +657,10 @@ interface RandomizerInt {
 
 contract GenArt721Minter {
   using SafeMath for uint256;
+  using Counters for Counters.Counter;
+  using Random for bytes32[];
+
+  Counters.Counter public _bidIds;
 
   RandomizerInt entropySource;
 
@@ -633,7 +674,7 @@ contract GenArt721Minter {
 
   mapping(uint256 => uint256) public bids;
   mapping(uint256 => bool) public biddingComplete;
-  mapping(uint256 => mapping(address => bool)) public drawingEntries;
+  mapping(uint256 => mapping(address => uint256)) public drawingEntries;
   mapping(uint256 => mapping(address => uint256)) public auctionEntries;
   mapping(address => uint256) public balances;
   mapping(uint256 => uint256) public drawings;
@@ -733,11 +774,13 @@ contract GenArt721Minter {
       // Check bid amount is enough
       require(msg.value >= price, "Bid price to low");
       // Log bid
-      bidId = 0;
+      _bidIds.increment();
+      bidId = _bidIds.current();
       bids[bidId] = msg.value; // TODO - Also store the address that made the bid
-      // is the bid at or over the project price
+      // lottory or Auction
       if (msg.value == price) { // lottery
-        drawingEntries[_projectId][tx.origin] = true;
+        // TODO: check if payee address is whitelisted
+        drawingEntries[_projectId][tx.origin] = bidId;
       } else { // Auction
         auctionEntries[_projectId][tx.origin] = bidId;
       }
