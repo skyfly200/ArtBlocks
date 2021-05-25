@@ -407,6 +407,88 @@ library EnumerableMap {
     }
 }
 
+// File contracts/libraries/Random.sol
+
+library Random {
+    using SafeMath for uint256;
+    using SignedSafeMath for int256;
+
+    /**
+     * Initialize the pool with the entropy of the blockhashes of the num of blocks starting from 0
+     * The argument "seed" allows you to select a different sequence of random numbers for the same block range.
+     */
+    function init(
+        uint256 seed
+    ) internal view returns (bytes32[] memory) {
+        uint256 blocks = 2;
+        bytes32[] memory pool = new bytes32[](3);
+        bytes32 salt = keccak256(abi.encodePacked(uint256(0), seed));
+        for (uint256 i = 0; i < blocks; i++) {
+            // Add some salt to each blockhash
+            pool[i + 1] = keccak256(
+                abi.encodePacked(blockhash(i), salt)
+            );
+        }
+        return pool;
+    }
+
+    /**
+     * Advances to the next 256-bit random number in the pool of hash chains.
+     */
+    function next(bytes32[] memory pool) internal pure returns (uint256) {
+        require(pool.length > 1, "Random.next: invalid pool");
+        uint256 roundRobinIdx = (uint256(pool[0]) % (pool.length - 1)) + 1;
+        bytes32 hash = keccak256(abi.encodePacked(pool[roundRobinIdx]));
+        pool[0] = bytes32(uint256(pool[0]) + 1);
+        pool[roundRobinIdx] = hash;
+        return uint256(hash);
+    }
+
+    /**
+     * Produces random integer values, uniformly distributed on the closed interval [a, b]
+     */
+    function uniform(
+        bytes32[] memory pool,
+        int256 a,
+        int256 b
+    ) internal pure returns (int256) {
+        require(a <= b, "Random.uniform: invalid interval");
+        return int256(next(pool) % uint256(b - a + 1)) + a;
+    }
+
+    /**
+     * Produces random integer values, with weighted distributions for values in a set
+     */
+    function weighted(
+        bytes32[] memory pool,
+        uint8[7] memory thresholds,
+        uint16 total
+    ) internal pure returns (uint8) {
+        int256 p = uniform(pool, 1, total);
+        int256 s = 0;
+        for (uint8 i=0; i<7; i++) {
+            s = s.add(thresholds[i]);
+            if (p <= s) return i;
+        }
+    }
+
+    /**
+     * Produces random integer values, with weighted distributions for values in a set
+     */
+    function weighted(
+        bytes32[] memory pool,
+        uint8[24] memory thresholds,
+        uint16 total
+    ) internal pure returns (uint8) {
+        int256 p = uniform(pool, 1, total);
+        int256 s = 0;
+        for (uint8 i=0; i<24; i++) {
+            s = s.add(thresholds[i]);
+            if (p <= s) return i;
+        }
+    }
+}
+
 
 // ArtBlocksCore
 
@@ -435,6 +517,10 @@ interface BonusContract {
   function bonusIsActive() external view returns (bool);
 }
 
+interface RandomizerInt {
+    function returnValue() external view returns (bytes32);
+}
+
 // Based on the prior version here:
 // https://docs.google.com/document/d/1ZfM745croLc7u_Dt534aH01ye9ePxBoZzOkoC5jJnO4/edit
 // Deployed as
@@ -445,6 +531,8 @@ interface BonusContract {
 
 contract GenArt721Minter {
   using SafeMath for uint256;
+
+  RandomizerInt entropySource;
 
   GenArt721CoreContract public artblocksContract;
 
@@ -471,6 +559,38 @@ contract GenArt721Minter {
   constructor(address _genArt721Address) {
     artblocksContract=GenArt721CoreContract(_genArt721Address);
   }
+
+  // Randomizer functions
+
+    /**
+     * @dev set Randomizer
+     */
+    function setRandom(address rand) external {
+        onlyRole(ADMIN_ROLE);
+        entropySource = RandomizerInt(rand);
+    }
+
+    /**
+     * @dev test Randomizer
+     */
+    function testRandom() external view returns (bytes32) {
+        onlyRole(ADMIN_ROLE);
+        return entropySource.returnValue();
+    }
+
+    /**
+     * @dev Call the Randomizer and get some randomness
+     */
+    function getRandomness(uint256 id, uint256 seed)
+        internal view returns (uint128 randomnesss)
+    {
+        uint256 randomness = uint256(keccak256(abi.encodePacked(
+            entropySource.returnValue(),
+            id,
+            seed
+        ))); // mix local and Randomizer entropy for the box randomness
+        return uint128(randomness % (2**128)); // cut off half the bits
+    }
 
   function getYourBalanceOfProjectERC20(uint256 _projectId) public view returns (uint256){
     uint256 balance = ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).balanceOf(msg.sender);
