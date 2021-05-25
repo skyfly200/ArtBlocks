@@ -103,6 +103,95 @@ library SafeMath {
 }
 
 
+/**
+ * @title SignedSafeMath
+ * @dev Signed math operations with safety checks that revert on error.
+ */
+library SignedSafeMath {
+    int256 constant private _INT256_MIN = -2**255;
+
+        /**
+     * @dev Returns the multiplication of two signed integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(int256 a, int256 b) internal pure returns (int256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        require(!(a == -1 && b == _INT256_MIN), "SignedSafeMath: multiplication overflow");
+
+        int256 c = a * b;
+        require(c / a == b, "SignedSafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two signed integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(int256 a, int256 b) internal pure returns (int256) {
+        require(b != 0, "SignedSafeMath: division by zero");
+        require(!(b == -1 && a == _INT256_MIN), "SignedSafeMath: division overflow");
+
+        int256 c = a / b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two signed integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(int256 a, int256 b) internal pure returns (int256) {
+        int256 c = a - b;
+        require((b >= 0 && c <= a) || (b < 0 && c > a), "SignedSafeMath: subtraction overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the addition of two signed integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(int256 a, int256 b) internal pure returns (int256) {
+        int256 c = a + b;
+        require((b >= 0 && c >= a) || (b < 0 && c < a), "SignedSafeMath: addition overflow");
+
+        return c;
+    }
+}
+
 
 // File contracts/libs/Strings.sol
 
@@ -559,22 +648,30 @@ contract GenArt721Minter {
   constructor(address _genArt721Address) {
     artblocksContract=GenArt721CoreContract(_genArt721Address);
   }
+  
+    modifier onlyWhitelisted {
+      require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+      _;
+    }
+    
+    modifier onlyArtist(uint256 _projectId) {
+      require(msg.sender==artblocksContract.projectIdToArtistAddress(_projectId), "can only be set by artist");
+      _;
+    }
 
-  // Randomizer functions
+    // Randomizer functions
 
     /**
      * @dev set Randomizer
      */
-    function setRandom(address rand) external {
-        onlyRole(ADMIN_ROLE);
+    function setRandom(address rand) external onlyWhitelisted {
         entropySource = RandomizerInt(rand);
     }
 
     /**
      * @dev test Randomizer
      */
-    function testRandom() external view returns (bytes32) {
-        onlyRole(ADMIN_ROLE);
+    function testRandom() external view onlyWhitelisted returns (bytes32) {
         return entropySource.returnValue();
     }
 
@@ -588,8 +685,8 @@ contract GenArt721Minter {
             entropySource.returnValue(),
             id,
             seed
-        ))); // mix local and Randomizer entropy for the box randomness
-        return uint128(randomness % (2**128)); // cut off half the bits
+        ))); // mix local and Randomizer entropy for randomness
+        return uint128(randomness % (2**128)); // cut off half the bits & return
     }
 
   function getYourBalanceOfProjectERC20(uint256 _projectId) public view returns (uint256){
@@ -602,33 +699,27 @@ contract GenArt721Minter {
     return remaining;
   }
   
-  function setProjectMintLimit(uint256 _projectId,uint8 _limit) public {
-    require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+  function setProjectMintLimit(uint256 _projectId,uint8 _limit) public onlyWhitelisted {
     projectMintLimit[_projectId] = _limit;
   }
 
-  function setProjectAllocations(uint256 _projectId, uint256[3] memory _allocations) public {
-    require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+  function setProjectAllocations(uint256 _projectId, uint256[3] memory _allocations) public onlyWhitelisted {
     projectMintAllocations[_projectId] = _allocations;
   }
 
-  function toggleContractFilter(uint256 _projectId) public {
-    require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+  function toggleContractFilter(uint256 _projectId) public onlyWhitelisted {
     contractFilterProject[_projectId]=!contractFilterProject[_projectId];
   }
 
-  function toggleDisabled(uint256 _projectId) public {
-    require(artblocksContract.isWhitelisted(msg.sender), "can only be set by admin");
+  function toggleDisabled(uint256 _projectId) public onlyWhitelisted {
     projectMintingDisabled[_projectId]=!projectMintingDisabled[_projectId];
   }
 
-  function artistToggleBonus(uint256 _projectId) public {
-    require(msg.sender==artblocksContract.projectIdToArtistAddress(_projectId), "can only be set by artist");
+  function artistToggleBonus(uint256 _projectId) public onlyArtist(_projectId) {
     projectIdToBonus[_projectId]=!projectIdToBonus[_projectId];
   }
 
-  function artistSetBonusContractAddress(uint256 _projectId, address _bonusContractAddress) public {
-    require(msg.sender==artblocksContract.projectIdToArtistAddress(_projectId), "can only be set by artist");
+  function artistSetBonusContractAddress(uint256 _projectId, address _bonusContractAddress) public onlyArtist(_projectId) {
     projectIdToBonusContractAddress[_projectId]=_bonusContractAddress;
   }
 
