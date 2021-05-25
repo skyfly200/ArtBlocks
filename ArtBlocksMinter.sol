@@ -1,3 +1,9 @@
+
+
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/utils/EnumerableSet.sol";
+
+pragma solidity >=0.6.0 <0.8.0;
+
 /**
  *Submitted for verification at Etherscan.io on 2020-12-20
 */
@@ -5,8 +11,6 @@
 // File contracts/libs/SafeMath.sol
 
 // File: openzeppelin-solidity/contracts/math/SafeMath.sol
-
-pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -512,7 +516,7 @@ contract GenArt721Minter {
       // is bidding open for this project
       require(!biddingComplete[_projectId], "project minting disabled");
       // is minting enabled
-      require(!projectMintingDisabled, "project minting disabled");
+      require(!projectMintingDisabled[_projectId], "project minting disabled");
       // lookup project price
       uint256 price = artblocksContract.projectIdToPricePerTokenInWei(_projectId);
       // Check bid amount is enough
@@ -522,7 +526,7 @@ contract GenArt721Minter {
       bids[bidId] = msg.value; // TODO - Also store the address that made the bid
       // is the bid at or over the project price
       if (msg.value == price) { // lottery
-        drawingEntries[_projectId][tx.sender] = bidId;
+        drawingEntries[_projectId][tx.origin] = bidId;
       } else { // Auction
         auctionEntries[_projectId][tx.sender] = bidId;
       }
@@ -562,7 +566,7 @@ contract GenArt721Minter {
   }
   
   // Open Minting
-  function purchase(uint256 _projectId) payable public {
+  function mint(uint256 _projectId) payable public {
     // check payment
     // check minting active
     // check tokens are left to mint
