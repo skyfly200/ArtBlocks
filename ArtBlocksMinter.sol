@@ -801,12 +801,13 @@ contract GenArt721Minter {
   }
   
   // Finalize bidding
-  function endBidding(uint256 _projectId) public { // TODO - Owner only
+  function endBidding(uint256 _projectId) public onlyWhitelisted {
     biddingComplete[_projectId] = true;
   }
   
   // Draw Winners
-  function drawLotto(uint256 _projectId) public { // TODO - Owner only
+  function drawLotto(uint256 _projectId) public onlyWhitelisted {
+      require(biddingComplete[_projectId], "Not completed");
       uint256 result = 0; // TODO - get a value from the Randomizer contract
       drawings[_projectId] = result;
   }
@@ -833,6 +834,12 @@ contract GenArt721Minter {
       // mark as withdrawn
       // deduct value from address balance
       // send funds to user
+  }
+  
+  // Payout funds from a drop
+  function payout(uint256 _projectId) public onlyWhitelisted {
+      require(biddingComplete[_projectId], "Not completed");
+      // TODO: split payments
   }
 
   function purchase(uint256 _projectId) public payable returns (uint256 _tokenId) {
