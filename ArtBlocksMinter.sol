@@ -651,6 +651,12 @@ interface BuyerWhitelist {
     function isWhitelisted(address _account) external view returns (bool);
 }
 
+struct Bid {
+    uint256 projectId;
+    uint256 amount;
+    address bidder;
+}
+
 // Based on the prior version here:
 // https://docs.google.com/document/d/1ZfM745croLc7u_Dt534aH01ye9ePxBoZzOkoC5jJnO4/edit
 // Deployed as
@@ -675,7 +681,7 @@ contract GenArt721Minter {
   // Declare a set state variable
   EnumerableSet.AddressSet private mySet;
 
-  mapping(uint256 => uint256) public bids;
+  mapping(uint256 => Bid) public bids;
   mapping(uint256 => bool) public biddingComplete;
   mapping(uint256 => mapping(address => uint256)) public drawingEntries;
   mapping(uint256 => mapping(address => uint256)) public auctionEntries;
@@ -795,10 +801,10 @@ contract GenArt721Minter {
       // Log bid
       _bidIds.increment();
       bidId = _bidIds.current();
-      bids[bidId] = msg.value; // TODO - Also store the bidder address and project id
-      // lottory or Auction
+      bids[bidId] = Bid(_projectId, msg.value, tx.origin);
+      // lottery or Auction
       if (msg.value == price) { // lottery
-        // TODO: check if payee address is whitelisted
+        buyerWhitelist.isWhitelisted(tx.origin);
         drawingEntries[_projectId][tx.origin] = bidId;
       } else { // Auction
         auctionEntries[_projectId][tx.origin] = bidId;
