@@ -647,6 +647,10 @@ interface RandomizerInt {
     function returnValue() external view returns (bytes32);
 }
 
+interface BuyerWhitelist {
+    function isWhitelisted(address _account) external view returns (bool);
+}
+
 // Based on the prior version here:
 // https://docs.google.com/document/d/1ZfM745croLc7u_Dt534aH01ye9ePxBoZzOkoC5jJnO4/edit
 // Deployed as
@@ -661,10 +665,9 @@ contract GenArt721Minter {
   using Random for bytes32[];
 
   Counters.Counter public _bidIds;
-
   RandomizerInt entropySource;
-
   GenArt721CoreContract public artblocksContract;
+  BuyerWhitelist public buyerWhitelist;
 
   // Add the library methods
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -698,6 +701,22 @@ contract GenArt721Minter {
     modifier onlyArtist(uint256 _projectId) {
       require(msg.sender==artblocksContract.projectIdToArtistAddress(_projectId), "can only be set by artist");
       _;
+    }
+    
+    // Buyer Whitelist functions
+    
+    /**
+     * @dev set Whitelist
+     */
+    function setWhitelist(address list) external onlyWhitelisted {
+        buyerWhitelist = BuyerWhitelist(list);
+    }
+
+    /**
+     * @dev check Whitelist
+     */
+    function checkWhitelist(address _address) external view returns (bool) {
+        return buyerWhitelist.isWhitelisted(_address);
     }
 
     // Randomizer functions
@@ -776,7 +795,7 @@ contract GenArt721Minter {
       // Log bid
       _bidIds.increment();
       bidId = _bidIds.current();
-      bids[bidId] = msg.value; // TODO - Also store the address that made the bid
+      bids[bidId] = msg.value; // TODO - Also store the bidder address and project id
       // lottory or Auction
       if (msg.value == price) { // lottery
         // TODO: check if payee address is whitelisted
