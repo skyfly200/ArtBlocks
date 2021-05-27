@@ -833,7 +833,7 @@ contract GenArt721Minter {
   // Draw Winners
   function drawLotto(uint256 _projectId) public onlyWhitelisted {
       require(biddingComplete[_projectId], "Not completed");
-      uint256 result = 0; // TODO - get a value from the Randomizer contract
+      uint256 result = uint256(entropySource.returnValue());
       drawings[_projectId] = result;
   }
   
