@@ -837,6 +837,18 @@ contract GenArt721Minter {
       drawings[_projectId] = result;
   }
   
+  // Check for winner in lottery
+  function wonLotto(uint256 _bidId) public returns (bool) {
+      // lookup bid
+      return false;
+  }
+  
+  // check for winner in Auction
+  function wonauction(uint256 _bidId) public returns (bool)  {
+      // lookup bid
+      return false;
+  }
+  
   // Redeem won bids as minted tokens
   function redeem(uint256 _bidId) public {
       // lookup bid
