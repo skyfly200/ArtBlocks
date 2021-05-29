@@ -655,6 +655,7 @@ struct Bid {
     uint256 projectId;
     uint256 amount;
     address bidder;
+    uint256 index;
 }
 
 // Based on the prior version here:
@@ -682,6 +683,7 @@ contract GenArt721Minter {
   EnumerableSet.AddressSet private mySet;
 
   mapping(uint256 => Bid) public bids;
+  mapping(uint256 => Counters.Counter) public projectBids;
   mapping(uint256 => bool) public biddingComplete;
   mapping(uint256 => mapping(address => uint256)) public drawingEntries;
   mapping(uint256 => mapping(address => uint256)) public auctionEntries;
@@ -693,7 +695,7 @@ contract GenArt721Minter {
   mapping(uint256 => bool) public projectMintingDisabled;
   mapping(address => mapping (uint256 => uint256)) public projectMintCounter;
   mapping(uint256 => uint256) public projectMintLimit;
-  mapping(uint256 => uint256[3]) public projectMintAllocations;
+  mapping(uint256 => uint256[3]) public projectMintAllocations; // lotto, auction, open
 
   constructor(address _genArt721Address) {
     artblocksContract=GenArt721CoreContract(_genArt721Address);
@@ -801,13 +803,15 @@ contract GenArt721Minter {
       // Log bid
       _bidIds.increment();
       bidId = _bidIds.current();
-      bids[bidId] = Bid(_projectId, msg.value, tx.origin);
       // lottery or Auction
       if (msg.value == price) { // lottery
         buyerWhitelist.isWhitelisted(tx.origin);
         drawingEntries[_projectId][tx.origin] = bidId;
+        projectBids[_projectId].increment();
+        bids[bidId] = Bid(_projectId, msg.value, tx.origin, projectBids[_projectId].current());
       } else { // Auction
         auctionEntries[_projectId][tx.origin] = bidId;
+        bids[bidId] = Bid(_projectId, msg.value, tx.origin, 0);
       }
       // Update users balance
       balances[tx.origin] += msg.value;
@@ -838,14 +842,26 @@ contract GenArt721Minter {
   }
   
   // Check for winner in lottery
-  function wonLotto(uint256 _bidId) public returns (bool) {
+  function wonLotto(uint256 _bidId) public view returns (bool) {
       // lookup bid
+      Bid memory bidLog = bids[_bidId];
+      // Iterate through number of lottery winners for the project
+      for (uint256 i = 0; i < projectMintAllocations[bidLog.projectId][0]; i++) {
+          // draw an index from the list
+          // TODO: rand in range 0 to entries - 1
+          uint256 draw = 1;
+          // If the bids index matches drawn index, then it is a winning bid
+          if (draw == bidLog.index) return true;
+          //  drawingEntries[bidLog.projectId][bidLog.bidder]
+      }
+      // Was not a winner
       return false;
   }
   
   // check for winner in Auction
-  function wonauction(uint256 _bidId) public returns (bool)  {
+  function wonAuction(uint256 _bidId) public view returns (bool)  {
       // lookup bid
+      // is it 
       return false;
   }
   
