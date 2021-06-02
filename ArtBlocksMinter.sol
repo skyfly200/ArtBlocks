@@ -819,10 +819,11 @@ contract GenArt721Minter {
   
   // Increase a bid (auction only)
   function increaseBid(uint256 _bidId) public payable {
-    // lookup info of the bid
-    // projectId = 0;
+    // lookup bid
+    Bid memory bidLog = bids[_bidId];    
     // ensure bid is an auction bid
     // ensure bidding is still open
+    require(!biddingComplete[bidLog.projectId], "Bidding completed");
     // !biddingComplete[projectId]
     // update bid
     // update auction entry
