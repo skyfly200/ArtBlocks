@@ -803,7 +803,7 @@ contract GenArt721Minter {
       // Log bid
       _bidIds.increment();
       bidId = _bidIds.current();
-      // lottery or Auction
+      // Check if bid is for the Lottery or Auction
       if (msg.value == price) { // lottery
         buyerWhitelist.isWhitelisted(tx.origin);
         drawingEntries[_projectId][tx.origin] = bidId;
@@ -816,6 +816,8 @@ contract GenArt721Minter {
       // Update users balance
       balances[tx.origin] += msg.value;
   }
+
+  // TODO: ERC20 Bid
   
   // Increase a bid (auction only)
   function increaseBid(uint256 _bidId) public payable {
@@ -829,6 +831,8 @@ contract GenArt721Minter {
     // update auction entry
     // update balance
   }
+
+  // TODO: Increase Bid ERC20
 
   function lookupTicket(uint256 projectId, address user) return uint256 {
       return drawingEntries[projectId][user];
@@ -911,7 +915,7 @@ contract GenArt721Minter {
   }
 
   // OLD MINTER FUNCTIONS
-  
+
   function purchase(uint256 _projectId) public payable returns (uint256 _tokenId) {
     return purchaseTo(msg.sender, _projectId);
   }
