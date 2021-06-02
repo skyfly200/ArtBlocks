@@ -819,12 +819,12 @@ contract GenArt721Minter {
   
   // Increase a bid (auction only)
   function increaseBid(uint256 _bidId) public payable {
-    // lookup bid
+    // lookup bid by id
     Bid memory bidLog = bids[_bidId];    
     // ensure bid is an auction bid
+    require(bidLog.index == 0,"Not an Auction Bid");
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
-    // !biddingComplete[projectId]
     // update bid
     // update auction entry
     // update balance
@@ -854,6 +854,8 @@ contract GenArt721Minter {
   function wonLotto(uint256 _bidId) public view returns (bool) {
       // lookup bid
       Bid memory bidLog = bids[_bidId];
+      // make sure bid is a lottery bid
+      require(bidLog.index > 0, "Lotto bid IDs only");
       // check project bidding is complete
       require(biddingComplete[bidLog.projectId], "Not completed");
       // Seed a pseudo random number generator with the drawing entropy
@@ -862,6 +864,8 @@ contract GenArt721Minter {
       for (uint256 i = 0; i < projectMintAllocations[bidLog.projectId][0]; i++) {
           // draw an index from range 0 to entries - 1
           uint256 draw = uint256(pool.uniform(0, int256(projectBids[bidLog.projectId].current().sub(1))));
+          // TODO: ensure index was not already drawn
+
           // If the bids index matches drawn index, then it is a winning bid
           if (draw == bidLog.index) return true;
       }
@@ -906,6 +910,8 @@ contract GenArt721Minter {
       // TODO: split payments
   }
 
+  // OLD MINTER FUNCTIONS
+  
   function purchase(uint256 _projectId) public payable returns (uint256 _tokenId) {
     return purchaseTo(msg.sender, _projectId);
   }
