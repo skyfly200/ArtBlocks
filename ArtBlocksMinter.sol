@@ -817,7 +817,34 @@ contract GenArt721Minter {
       balances[tx.origin] += msg.value;
   }
 
-  // TODO: ERC20 Bid
+  // ERC20 Bid
+  function bidERC20(uint256 _projectId, uint256 amount) public returns (uint256 bidId) {
+      // is bidding open for this project
+      require(!biddingComplete[_projectId], "project minting disabled");
+      // is minting enabled
+      require(!projectMintingDisabled[_projectId], "project minting disabled");
+      // lookup project price
+      uint256 price = artblocksContract.projectIdToPricePerTokenInWei(_projectId); // TODO: use ERC20 eqiv
+      // Check bid amount is enough
+      require(amount >= price, "Bid price to low");
+      // Count up bid id
+      _bidIds.increment();
+      bidId = _bidIds.current();
+      // Check if bid is for the Lottery or Auction
+      if (amount == price) { // lottery
+        buyerWhitelist.isWhitelisted(tx.origin);
+        drawingEntries[_projectId][tx.origin] = bidId;
+        projectBids[_projectId].increment();
+        bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
+      } else { // Auction
+        auctionEntries[_projectId][tx.origin] = bidId;
+        bids[bidId] = Bid(_projectId, amount, tx.origin, 0);
+      }
+      // TODO: lookup token accepted for this project
+      address token;
+      // Update users balance of this token
+      balancesERC20[token][tx.origin] += amount;
+  }
   
   // Increase a bid (auction only)
   function increaseBid(uint256 _bidId) public payable {
@@ -832,7 +859,18 @@ contract GenArt721Minter {
     // update balance
   }
 
-  // TODO: Increase Bid ERC20
+  // Increase a bid in an ERC20 (auction only)
+  function increaseBid(uint256 _bidId, uint256 amount) public {
+    // lookup bid by id
+    Bid memory bidLog = bids[_bidId];    
+    // ensure bid is an auction bid
+    require(bidLog.index == 0,"Not an Auction Bid");
+    // ensure bidding is still open
+    require(!biddingComplete[bidLog.projectId], "Bidding completed");
+    // update bid
+    // update auction entry
+    // update balance
+  }
 
   function lookupTicket(uint256 projectId, address user) return uint256 {
       return drawingEntries[projectId][user];
