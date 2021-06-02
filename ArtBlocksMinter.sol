@@ -828,6 +828,14 @@ contract GenArt721Minter {
     // update auction entry
     // update balance
   }
+
+  function lookupTicket(uint256 projectId, address user) return uint256 {
+      return drawingEntries[projectId][user];
+  }
+
+  function lookupBid(uint256 projectId, address user) return uint256 {
+      return auctionEntries[projectId][user];
+  }
   
   // Finalize bidding
   function endBidding(uint256 _projectId) public onlyWhitelisted {
@@ -855,7 +863,6 @@ contract GenArt721Minter {
           uint256 draw = uint256(pool.uniform(0, int256(projectBids[bidLog.projectId].current().sub(1))));
           // If the bids index matches drawn index, then it is a winning bid
           if (draw == bidLog.index) return true;
-          //  drawingEntries[bidLog.projectId][bidLog.bidder]
       }
       // Was not a winner
       return false;
