@@ -678,6 +678,7 @@ contract GenArt721Minter {
 
   // Add the library methods
   using EnumerableSet for EnumerableSet.AddressSet;
+  using EnumerableSet for EnumerableSet.UintSet;
 
   // Declare a set state variable
   EnumerableSet.AddressSet private mySet;
@@ -900,14 +901,19 @@ contract GenArt721Minter {
       require(bidLog.index > 0, "Lotto bid IDs only");
       // check project bidding is complete
       require(biddingComplete[bidLog.projectId], "Not completed");
+      // create a set to keep tack of drawn tickets
+      EnumerableSet.UintSet private winners;
       // Seed a pseudo random number generator with the drawing entropy
       bytes32[] memory pool = Random.init(drawings[bidLog.projectId]);
       // Iterate through number of lottery winners for the project
       for (uint256 i = 0; i < projectMintAllocations[bidLog.projectId][0]; i++) {
-          // draw an index from range 0 to entries - 1
-          uint256 draw = uint256(pool.uniform(0, int256(projectBids[bidLog.projectId].current().sub(1))));
-          // TODO: ensure index was not already drawn
-
+          uint256 draw;
+          do {
+            // draw an index from range 0 to entries - 1
+            draw = uint256(pool.uniform(0, int256(projectBids[bidLog.projectId].current().sub(1))));
+          } while (winners.contains(draw)) // ensure index was not already drawn
+          // save winner to set
+          winners.add(draw);
           // If the bids index matches drawn index, then it is a winning bid
           if (draw == bidLog.index) return true;
       }
