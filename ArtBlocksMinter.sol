@@ -861,22 +861,30 @@ contract GenArt721Minter {
     require(bidLog.index == 0,"Not an Auction Bid");
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
-    // update bid
+    // increase bid TODO
+    // update bid log
+    bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
     // update auction entry
+    auctionEntries[_projectId][tx.origin] = bidId;
     // update balance
+    balances[tx.origin] += msg.value;
   }
 
   // Increase a bid in an ERC20 (auction only)
-  function increaseBid(uint256 _bidId, uint256 amount) public {
+  function increaseBidERC20(uint256 _bidId, uint256 amount) public {
     // lookup bid by id
     Bid memory bidLog = bids[_bidId];    
     // ensure bid is an auction bid
     require(bidLog.index == 0,"Not an Auction Bid");
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
-    // update bid
+    // increase bid TODO
+    // update bid log
+    bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
     // update auction entry
-    // update balance
+    auctionEntries[_projectId][tx.origin] = bidId;
+    // Update users locked balance of this token
+    balancesERC20[token][tx.origin] += amount;
   }
 
   function lookupTicket(uint256 projectId, address user) return uint256 {
