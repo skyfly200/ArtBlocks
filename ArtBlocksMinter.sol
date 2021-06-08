@@ -824,10 +824,13 @@ contract GenArt721Minter {
       require(!biddingComplete[_projectId], "project minting disabled");
       // is minting enabled
       require(!projectMintingDisabled[_projectId], "project minting disabled");
-      // lookup project price
-      uint256 price = artblocksContract.projectIdToPricePerTokenInWei(_projectId); // TODO: use ERC20 eqiv
-      // Check bid amount is enough
-      require(amount >= price, "Bid price to low");
+      // check project takes an ERC20
+      require(keccak256(abi.encodePacked(artblocksContract.projectIdToCurrencySymbol(_projectId))) != keccak256(abi.encodePacked("ETH")))
+      // check for funds and allowance
+      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).allowance(msg.sender, address(this)) >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Insufficient Funds Approved for TX");
+      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).balanceOf(msg.sender) >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Insufficient balance.");
+      // Check bid amount is min or greater
+      require(amount >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Bid amount insuficient");
       // Count up bid id
       _bidIds.increment();
       bidId = _bidIds.current();
