@@ -841,12 +841,15 @@ contract GenArt721Minter {
         projectBids[_projectId].increment();
         bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
       } else { // Auction
+        // check bid is greater than current winning bid
         auctionEntries[_projectId][tx.origin] = bidId;
         bids[bidId] = Bid(_projectId, amount, tx.origin, 0);
       }
-      // TODO: lookup token accepted for this project
-      address token;
-      // Update users balance of this token
+      // lookup token accepted for this project
+      address token = artblocksContract.projectIdToCurrencyAddress(_projectId);
+      // transfer amount of token to contract
+      ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).transferFrom(msg.sender, address(this));
+      // Update users locked balance of this token
       balancesERC20[token][tx.origin] += amount;
   }
   
