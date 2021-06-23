@@ -859,12 +859,14 @@ contract GenArt721Minter {
   function increaseBid(uint256 _bidId) public payable {
     // lookup bid by id
     Bid memory bidLog = bids[_bidId];    
+    // ensure caller was original bidder
+    require(tx.origin == bidLog.bidder, "Not your bid");
     // ensure bid is an auction bid
     require(bidLog.index == 0,"Not an Auction Bid");
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
     // increase bid TODO
-    uint256 newAmount;
+    uint256 newAmount = bidLog.amount + msg.value;
     // update bid log
     bids[_bidId] = Bid(bidLog.projectId, newAmount, tx.origin, projectBids[bidLog.projectId].current());
     // update balance
@@ -875,14 +877,16 @@ contract GenArt721Minter {
   function increaseBidERC20(uint256 _bidId, uint256 amount) public {
     // lookup bid by id
     Bid memory bidLog = bids[_bidId];    
+    // ensure caller was original bidder
+    require(tx.origin == bidLog.bidder, "Not your bid");
     // ensure bid is an auction bid
     require(bidLog.index == 0,"Not an Auction Bid");
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
     // increase bid TODO
-    uint256 newAmount;
+    uint256 newAmount = bidLog.amount + amount;
     // update bid log
-    bids[_bidId] = Bid(bidLog.projectId, amount, tx.origin, projectBids[bidLog.projectId].current());
+    bids[_bidId] = Bid(bidLog.projectId, newAmount, tx.origin, projectBids[bidLog.projectId].current());
     address token;
     // TODO: transfer tokens to lock Update
     
@@ -890,11 +894,11 @@ contract GenArt721Minter {
     balancesERC20[token][tx.origin] += amount;
   }
 
-  function lookupTicket(uint256 projectId, address user) public returns (uint256) {
+  function lookupTicket(uint256 projectId, address user) public view returns (uint256) {
       return drawingEntries[projectId][user];
   }
 
-  function lookupBid(uint256 projectId, address user) public returns (uint256) {
+  function lookupBid(uint256 projectId, address user) public view returns (uint256) {
       return auctionEntries[projectId][user];
   }
   
