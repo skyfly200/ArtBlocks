@@ -689,6 +689,7 @@ contract GenArt721Minter {
   mapping(uint256 => mapping(address => uint256)) public drawingEntries;
   mapping(uint256 => mapping(address => uint256)) public auctionEntries;
   mapping(address => uint256) public balances;
+  mapping(address => mapping(address => uint256)) public balancesERC20;
   mapping(uint256 => uint256) public drawings;
   mapping(uint256 => bool) public projectIdToBonus;
   mapping(uint256 => address) public projectIdToBonusContractAddress;
@@ -825,10 +826,11 @@ contract GenArt721Minter {
       // is minting enabled
       require(!projectMintingDisabled[_projectId], "project minting disabled");
       // check project takes an ERC20
-      require(keccak256(abi.encodePacked(artblocksContract.projectIdToCurrencySymbol(_projectId))) != keccak256(abi.encodePacked("ETH")))
+      require(keccak256(abi.encodePacked(artblocksContract.projectIdToCurrencySymbol(_projectId))) != keccak256(abi.encodePacked("ETH")));
       // check for funds and allowance
-      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).allowance(msg.sender, address(this)) >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Insufficient Funds Approved for TX");
-      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).balanceOf(msg.sender) >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Insufficient balance.");
+      uint256 price = artblocksContract.projectIdToPricePerTokenInWei(_projectId);
+      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).allowance(msg.sender, address(this)) >= price, "Insufficient Funds Approved for TX");
+      require(ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).balanceOf(msg.sender) >= price, "Insufficient balance.");
       // Check bid amount is min or greater
       require(amount >= artblocksContract.projectIdToPricePerTokenInWei(_projectId), "Bid amount insuficient");
       // Count up bid id
@@ -848,7 +850,7 @@ contract GenArt721Minter {
       // lookup token accepted for this project
       address token = artblocksContract.projectIdToCurrencyAddress(_projectId);
       // transfer amount of token to contract
-      ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).transferFrom(msg.sender, address(this));
+      ERC20(artblocksContract.projectIdToCurrencyAddress(_projectId)).transferFrom(msg.sender, address(this), amount);
       // Update users locked balance of this token
       balancesERC20[token][tx.origin] += amount;
   }
@@ -862,10 +864,9 @@ contract GenArt721Minter {
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
     // increase bid TODO
+    uint256 newAmount;
     // update bid log
-    bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
-    // update auction entry
-    auctionEntries[_projectId][tx.origin] = bidId;
+    bids[_bidId] = Bid(bidLog.projectId, newAmount, tx.origin, projectBids[bidLog.projectId].current());
     // update balance
     balances[tx.origin] += msg.value;
   }
@@ -879,19 +880,21 @@ contract GenArt721Minter {
     // ensure bidding is still open
     require(!biddingComplete[bidLog.projectId], "Bidding completed");
     // increase bid TODO
+    uint256 newAmount;
     // update bid log
-    bids[bidId] = Bid(_projectId, amount, tx.origin, projectBids[_projectId].current());
-    // update auction entry
-    auctionEntries[_projectId][tx.origin] = bidId;
+    bids[_bidId] = Bid(bidLog.projectId, amount, tx.origin, projectBids[bidLog.projectId].current());
+    address token;
+    // TODO: transfer tokens to lock Update
+    
     // Update users locked balance of this token
     balancesERC20[token][tx.origin] += amount;
   }
 
-  function lookupTicket(uint256 projectId, address user) return uint256 {
+  function lookupTicket(uint256 projectId, address user) public returns (uint256) {
       return drawingEntries[projectId][user];
   }
 
-  function lookupBid(uint256 projectId, address user) return uint256 {
+  function lookupBid(uint256 projectId, address user) public returns (uint256) {
       return auctionEntries[projectId][user];
   }
   
@@ -912,22 +915,25 @@ contract GenArt721Minter {
       // lookup bid
       Bid memory bidLog = bids[_bidId];
       // make sure bid is a lottery bid
-      require(bidLog.index > 0, "Lotto bid IDs only");
+      require(bidLog.index > 0, "Lotto Bid IDs only");
       // check project bidding is complete
       require(biddingComplete[bidLog.projectId], "Not completed");
-      // create a set to keep tack of drawn tickets
-      EnumerableSet.UintSet private winners;
+      // create an array to keep track of drawn tickets
+      uint256 [] memory winners;
       // Seed a pseudo random number generator with the drawing entropy
       bytes32[] memory pool = Random.init(drawings[bidLog.projectId]);
       // Iterate through number of lottery winners for the project
       for (uint256 i = 0; i < projectMintAllocations[bidLog.projectId][0]; i++) {
           uint256 draw;
+          bool previouslyDrawn = false;
           do {
             // draw an index from range 0 to entries - 1
             draw = uint256(pool.uniform(0, int256(projectBids[bidLog.projectId].current().sub(1))));
-          } while (winners.contains(draw)) // ensure index was not already drawn
+            previouslyDrawn = false;
+            for (uint256 j = 0; j < winners.length; j++) previouslyDrawn = previouslyDrawn || draw == winners[j];
+          } while (previouslyDrawn); // ensure index was not already drawn
           // save winner to set
-          winners.add(draw);
+          winners[winners.length] = draw;
           // If the bids index matches drawn index, then it is a winning bid
           if (draw == bidLog.index) return true;
       }
@@ -938,7 +944,7 @@ contract GenArt721Minter {
   // check for winner in Auction
   function wonAuction(uint256 _bidId) public view returns (bool)  {
       // lookup bid
-      // is it 
+      // is it a winner?
       return false;
   }
   
