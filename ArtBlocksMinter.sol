@@ -688,6 +688,7 @@ contract GenArt721Minter {
   mapping(uint256 => bool) public biddingComplete;
   mapping(uint256 => mapping(address => uint256)) public drawingEntries;
   mapping(uint256 => mapping(address => uint256)) public auctionEntries;
+  mapping(uint256 => uint256) public projectThresholds;
   mapping(address => uint256) public balances;
   mapping(address => mapping(address => uint256)) public balancesERC20;
   mapping(uint256 => uint256) public drawings;
@@ -813,6 +814,8 @@ contract GenArt721Minter {
         bids[bidId] = Bid(_projectId, msg.value, tx.origin, projectBids[_projectId].current());
       } else { // Auction
         auctionEntries[_projectId][tx.origin] = bidId;
+        // store lowest winning bid
+        if (auctionEntries.length >= ) projectThresholds[_projectId] = 0;
         bids[bidId] = Bid(_projectId, msg.value, tx.origin, 0);
       }
       // Update users balance
@@ -948,16 +951,19 @@ contract GenArt721Minter {
   // check for winner in Auction
   function wonAuction(uint256 _bidId) public view returns (bool)  {
       // lookup bid
+      Bid memory bidLog = bids[_bidId];
+      // lookup project auction results
+      uint256 thresholdAmount = projectThresholds[_projectId];
       // is it a winner?
-      return false;
+      return bidLog.amount >= thresholdAmount;
   }
   
   // Redeem won bids as minted tokens
   function redeem(uint256 _bidId) public {
       // lookup bid
-      // deduct bid form balance to pay
+      // deduct bid amount from balance to pay for the mint
       // mark bid as redeemed
-      // mint token
+      // mint a token
   }
   
   // Open Minting
